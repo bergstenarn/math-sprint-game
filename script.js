@@ -40,6 +40,38 @@ let finalTimeDisplay = "0.0s";
 // Scroll
 let valueY = 0;
 
+// Reset game
+function playAgain() {
+  gamePage.addEventListener("click", startTimer);
+  scorePage.hidden = true;
+  splashPage.hidden = false;
+  equationsArray = [];
+  playerGuessArray = [];
+  valueY = 0;
+  playAgainBtn.hidden = true;
+}
+
+// Show score page
+function showScorePage() {
+  // Show play again button after one second
+  setTimeout(() => {
+    playAgainBtn.hidden = false;
+  }, 2000);
+  gamePage.hidden = true;
+  scorePage.hidden = false;
+}
+
+// Format and display time in DOM
+function scoresToDOM() {
+  finalTimeDisplay = finalTime.toFixed(1);
+  baseTime = timePlayed.toFixed(1);
+  penaltyTime = penaltyTime.toFixed(1);
+  baseTimeEl.textContent = `Base time: ${baseTime}s`;
+  penaltyTimeEl.textContent = `Penalty: +${penaltyTime}s`;
+  finalTimeEl.textContent = `${finalTimeDisplay}s`;
+  showScorePage();
+}
+
 // Stop timer, process results, go to score page
 function checkTime() {
   console.log(timePlayed);
@@ -51,9 +83,17 @@ function checkTime() {
       // Add penalty only if the guess is wrong
       return total + (guess === equationsArray[i].evaluated ? 0 : 0.5);
     }, 0);
+    finalTime = timePlayed + penaltyTime;
+    console.log(
+      "time:",
+      timePlayed,
+      "penalty:",
+      penaltyTime,
+      "final",
+      finalTime
+    );
+    scoresToDOM();
   }
-  finalTime = Math.round((timePlayed + penaltyTime) * 10) / 10;
-  console.log("time:", timePlayed, "penalty:", penaltyTime, "final", finalTime);
 }
 
 // Add a tenth of a second to timePlayed
@@ -85,8 +125,9 @@ function select(guessedTrue) {
 
 // Displays game page
 function showGamePage() {
-  gamePage.hidden = false;
   countdownPage.hidden = true;
+  gamePage.hidden = false;
+  itemContainer.scrollTo({ top: 0, behavior: "instant" });
 }
 
 // Get random number up to a max number
@@ -203,6 +244,14 @@ function selectQuestionAmount(e) {
   console.log("Question amount:", questionAmount);
   if (questionAmount) {
     showCountdown();
+    // Uncheck radio buttons
+    radioInputs.forEach((radioInput) => {
+      radioInput.checked = false;
+    });
+    // Remove selected label styling
+    radioContainers.forEach((radioEl) => {
+      radioEl.classList.remove("selected-label");
+    });
   } else {
     alert("Make a selection.");
   }
