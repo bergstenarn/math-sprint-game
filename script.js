@@ -22,10 +22,13 @@ const playAgainBtn = document.querySelector(".play-again");
 let questionAmount = 0;
 let equationsArray = [];
 let playerGuessArray = [];
+let bestScoreArray = [];
 
 // Game Page
 let firstNumber = 0;
+let wrongFirstNumber = 0;
 let secondNumber = 0;
+let wrongSecondNumber = 0;
 let equationObject = {};
 const wrongFormat = [];
 
@@ -35,10 +38,52 @@ let timePlayed = 0;
 let baseTime = 0;
 let penaltyTime = 0;
 let finalTime = 0;
-let finalTimeDisplay = "0.0s";
+let finalTimeDisplay = "0.0";
 
 // Scroll
 let valueY = 0;
+
+// Refresh splash page best scores
+function bestScoresToDOM() {
+  bestScores.forEach((bestScore, i) => {
+    bestScore.textContent = `${bestScoreArray[i].bestScore}s`;
+  });
+}
+
+// Check local storage for best scores and set bestScoreArray
+function getSavedBestScores() {
+  if (localStorage.getItem("bestScores")) {
+    bestScoreArray = JSON.parse(localStorage.bestScores);
+  } else {
+    bestScoreArray = [
+      { questions: 10, bestScore: finalTimeDisplay },
+      { questions: 25, bestScore: finalTimeDisplay },
+      { questions: 50, bestScore: finalTimeDisplay },
+      { questions: 99, bestScore: finalTimeDisplay },
+    ];
+    localStorage.setItem("bestScores", JSON.stringify(bestScoreArray));
+  }
+  bestScoresToDOM();
+}
+
+// Update best score array
+function updateBestScore() {
+  bestScoreArray.forEach((score, index) => {
+    // Select correct best score to update
+    if (score.questions == questionAmount) {
+      // Return best score as number with one decimal
+      const savedBestScore = Number(bestScoreArray[index].bestScore);
+      // Update if the new final score is less or replacing zero
+      if (savedBestScore === 0 || savedBestScore > finalTime) {
+        bestScoreArray[index].bestScore = finalTimeDisplay;
+      }
+    }
+  });
+  // Update splash page
+  bestScoresToDOM();
+  // Save to local storage
+  localStorage.setItem("bestScores", JSON.stringify(bestScoreArray));
+}
 
 // Reset game
 function playAgain() {
@@ -69,6 +114,7 @@ function scoresToDOM() {
   baseTimeEl.textContent = `Base time: ${baseTime}s`;
   penaltyTimeEl.textContent = `Penalty: +${penaltyTime}s`;
   finalTimeEl.textContent = `${finalTimeDisplay}s`;
+  updateBestScore();
   showScorePage();
 }
 
@@ -81,8 +127,14 @@ function checkTime() {
     // Check for wrong guesses and add penalty time
     penaltyTime = playerGuessArray.reduce((total, guess, i) => {
       // Add penalty only if the guess is wrong
-      return total + (guess === equationsArray[i].evaluated ? 0 : 0.5);
+      return total + (guess === equationsArray[i].evaluated ? 0 : 3.0);
     }, 0);
+    // Increase penalty if the player tries to cheat
+    const allGuessesAreEqual = new Set(playerGuessArray).size === 1;
+    penaltyTime +=
+      timePlayed < questionAmount * 0.5 || allGuessesAreEqual
+        ? questionAmount * 2
+        : 0;
     finalTime = timePlayed + penaltyTime;
     console.log(
       "time:",
@@ -105,9 +157,9 @@ function addTime() {
 // Start timer when game page is clicked
 function startTimer() {
   // Reset times
-  let timePlayed = 0;
-  let penaltyTime = 0;
-  let finalTime = 0;
+  timePlayed = 0;
+  penaltyTime = 0;
+  finalTime = 0;
   timer = setInterval(addTime, 100);
   gamePage.removeEventListener("click", startTimer);
 }
@@ -156,11 +208,15 @@ function createEquations() {
   // Loop through, mess with the equation results, push to array
   for (let i = 0; i < wrongEquations; i++) {
     firstNumber = getRandomInt(9);
+    wrongFirstNumber = firstNumber === 9 ? firstNumber - 1 : firstNumber + 1;
     secondNumber = getRandomInt(9);
+    wrongSecondNumber =
+      secondNumber === 9 ? secondNumber - 1 : secondNumber + 1;
     const equationValue = firstNumber * secondNumber;
-    wrongFormat[0] = `${firstNumber} x ${secondNumber + 1} = ${equationValue}`;
-    wrongFormat[1] = `${firstNumber} x ${secondNumber} = ${equationValue - 1}`;
-    wrongFormat[2] = `${firstNumber + 1} x ${secondNumber} = ${equationValue}`;
+    const wrongEquationsValue = equationValue === 0 ? 1 : equationValue - 1;
+    wrongFormat[0] = `${firstNumber} x ${wrongSecondNumber} = ${equationValue}`;
+    wrongFormat[1] = `${firstNumber} x ${secondNumber} = ${wrongEquationsValue}`;
+    wrongFormat[2] = `${wrongFirstNumber} x ${secondNumber} = ${equationValue}`;
     const formatChoice = getRandomInt(3);
     const equation = wrongFormat[formatChoice];
     equationObject = { value: equation, evaluated: "false" };
@@ -271,3 +327,6 @@ startForm.addEventListener("click", () => {
 // Event listeners
 startForm.addEventListener("submit", selectQuestionAmount);
 gamePage.addEventListener("click", startTimer);
+
+// On load
+getSavedBestScores();
